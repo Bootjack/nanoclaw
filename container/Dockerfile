@@ -32,15 +32,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Pre-install Widevine CDM for Firefox DRM support (Netflix, etc.)
-# Downloads the latest version from Google's CDM distribution
-RUN WIDEVINE_VERSION=$(curl -s https://dl.google.com/widevine-cdm/current.txt) && \
-    mkdir -p /opt/gmp-widevinecdm/system-installed && \
-    curl -L "https://dl.google.com/widevine-cdm/${WIDEVINE_VERSION}-linux-x64.zip" -o /tmp/widevine.zip && \
-    unzip /tmp/widevine.zip -d /opt/gmp-widevinecdm/system-installed && \
+RUN mkdir -p /opt/widevine && \
+    curl -L https://dl.google.com/widevine-cdm/4.10.2710.0-linux-x64.zip -o /tmp/widevine.zip && \
+    unzip /tmp/widevine.zip -d /opt/widevine && \
     rm /tmp/widevine.zip && \
-    chmod -R 755 /opt/gmp-widevinecdm
+    chmod -R 755 /opt/widevine
 
-ENV MOZ_GMP_PATH=/opt/gmp-widevinecdm/system-installed
+ENV MOZ_GMP_PATH=/opt/widevine
 
 # Install @playwright/mcp (provides `playwright-mcp` binary) and claude-code globally
 RUN npm install -g @playwright/mcp @anthropic-ai/claude-code
