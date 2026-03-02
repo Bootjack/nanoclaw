@@ -11,6 +11,7 @@ import {
 } from './config.js';
 import { AvailableGroup } from './container-runner.js';
 import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
+import { updateEnvFile } from './env.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
@@ -170,6 +171,8 @@ export async function processTaskIpc(
     trigger?: string;
     requiresTrigger?: boolean;
     containerConfig?: RegisteredGroup['containerConfig'];
+    // For update_env
+    updates?: Record<string, string>;
   },
   sourceGroup: string, // Verified identity from IPC directory
   isMain: boolean, // Verified from directory path
@@ -378,6 +381,27 @@ export async function processTaskIpc(
           { data },
           'Invalid register_group request - missing required fields',
         );
+      }
+      break;
+
+    case 'update_env':
+      // Only main group can update environment variables
+      if (!isMain) {
+        logger.warn({ sourceGroup }, 'Unauthorized update_env attempt blocked');
+        break;
+      }
+      if (data.updates && typeof data.updates === 'object') {
+        try {
+          updateEnvFile(data.updates);
+          logger.info(
+            { keys: Object.keys(data.updates), sourceGroup },
+            'Environment variables updated via IPC',
+          );
+        } catch (err) {
+          logger.error({ err, sourceGroup }, 'Failed to update env file');
+        }
+      } else {
+        logger.warn({ data }, 'Invalid update_env request - missing updates');
       }
       break;
 
