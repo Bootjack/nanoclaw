@@ -46,17 +46,100 @@ async function execCommand(
     });
 
     child.on('close', (code) => {
-      resolve({
-        stdout: stdout.trim(),
-        stderr: stderr.trim(),
-        exitCode: code ?? 0,
-      });
+      if (code !== 0) {
+        reject(
+          new Error(`Command failed with exit code ${code}: ${stderr.trim()}`),
+        );
+      } else {
+        resolve({ stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 });
+      }
     });
 
     child.on('error', (err) => {
       reject(err);
     });
   });
+}
+
+/**
+ * Run all dependency check scripts in the dependency-checks directory
+ * Each script should return:
+ *   0 = dependency satisfied
+ *   1 = dependency check failed (non-critical)
+ *   2 = dependency not applicable (e.g., headless environment)
+ */
+async function runDependencyChecks(
+  projectRoot: string,
+  steps: DeploymentResult['steps'],
+  startTime: number,
+): Promise<void> {
+  const checksDir = path.join(projectRoot, 'scripts', 'dependency-checks');
+
+  // Check if directory exists
+  if (!fs.existsSync(checksDir)) {
+    logger.info('No dependency checks directory found, skipping');
+    return;
+  }
+
+  // Get all .sh files in the directory
+  const checkScripts = fs
+    .readdirSync(checksDir)
+    .filter((file) => file.endsWith('.sh'))
+    .sort(); // Run in alphabetical order for consistency
+
+  if (checkScripts.length === 0) {
+    logger.info('No dependency check scripts found');
+    return;
+  }
+
+  logger.info(`Running ${checkScripts.length} dependency check(s)...`);
+
+  for (const scriptFile of checkScripts) {
+    const scriptPath = path.join(checksDir, scriptFile);
+    const checkName = scriptFile.replace('.sh', '').replace(/-/g, ' ');
+
+    try {
+      logger.info(`Checking: ${checkName}...`);
+      const result = await execCommand(
+        `bash "${scriptPath}"`,
+        projectRoot,
+        30000,
+      );
+
+      steps.push({
+        name: `Dependency check: ${checkName}`,
+        success: true,
+        output: result.stdout || `${checkName} verified`,
+        duration: Date.now() - startTime,
+      });
+      logger.info(`✓ ${checkName} check passed`);
+    } catch (error: any) {
+      // Parse exit code from error message
+      const exitCode = error.message.match(/exit code (\d+)/)?.[1];
+
+      if (exitCode === '2') {
+        // Not applicable in this environment
+        logger.info(`ℹ ${checkName} not applicable in this environment`);
+        steps.push({
+          name: `Dependency check: ${checkName}`,
+          success: true,
+          output: `Not applicable in this environment`,
+          duration: Date.now() - startTime,
+        });
+      } else {
+        // Check failed, but non-critical
+        logger.warn(
+          `⚠ ${checkName} check failed (non-critical): ${error.message}`,
+        );
+        steps.push({
+          name: `Dependency check: ${checkName}`,
+          success: true,
+          output: `Warning: ${checkName} may not work (non-critical)`,
+          duration: Date.now() - startTime,
+        });
+      }
+    }
+  }
 }
 
 /**
@@ -325,6 +408,9 @@ export async function executeDeploy(
           throw new Error(`Failed to rebuild container: ${error}`);
         }
       }
+
+      // Step 6.6: Run host dependency checks
+      await runDependencyChecks(projectRoot, steps, rebuildStart);
 
       // Step 7: Restart service
       const restartStart = Date.now();
