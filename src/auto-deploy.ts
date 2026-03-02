@@ -5,6 +5,10 @@ import path from 'path';
 import { DATA_DIR, HOME_DIR } from './config.js';
 import { logger } from './logger.js';
 
+// Persists the last remote commit that failed to deploy, so we don't retry
+// it in a loop after a rollback restarts the service process.
+const FAILED_DEPLOY_FILE = path.join(DATA_DIR, 'last-failed-deploy-commit.txt');
+
 interface DeploymentResult {
   success: boolean;
   steps: {
@@ -633,6 +637,24 @@ export function startAutoDeployLoop(
 
       // If this is the first check, just record the commit
       if (!lastCheckedCommit) {
+        // Check if we previously failed to deploy the current remote commit.
+        // A rollback restarts the service, so without this the new process would
+        // immediately retry the same broken commit on every poll.
+        try {
+          const failedCommit = fs
+            .readFileSync(FAILED_DEPLOY_FILE, 'utf-8')
+            .trim();
+          if (failedCommit === status.remoteCommit) {
+            lastCheckedCommit = status.remoteCommit;
+            logger.warn(
+              { commit: failedCommit.slice(0, 7) },
+              'Auto-deploy: skipping previously failed commit, will retry when remote changes',
+            );
+            return;
+          }
+        } catch {
+          // File doesn't exist — normal first startup
+        }
         lastCheckedCommit = status.currentCommit;
         logger.info(
           { commit: status.currentCommit.slice(0, 7) },
@@ -657,8 +679,25 @@ export function startAutoDeployLoop(
 
         if (result.success) {
           lastCheckedCommit = result.currentCommit;
+          // Clear any persisted failure marker so future deploys aren't blocked
+          try {
+            fs.unlinkSync(FAILED_DEPLOY_FILE);
+          } catch {
+            // File didn't exist — that's fine
+          }
         } else {
-          logger.error('Deployment failed, will retry on next check');
+          // Persist the failing remote commit so a rollback-triggered service
+          // restart doesn't immediately loop back into the same broken deploy.
+          try {
+            fs.writeFileSync(FAILED_DEPLOY_FILE, status.remoteCommit);
+          } catch (err) {
+            logger.warn({ err }, 'Failed to write failed-deploy marker');
+          }
+          lastCheckedCommit = status.remoteCommit;
+          logger.error(
+            { commit: status.remoteCommit.slice(0, 7) },
+            'Deployment failed, will not retry until remote changes',
+          );
         }
       } else {
         logger.debug('No updates detected');
