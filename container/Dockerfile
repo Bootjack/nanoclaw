@@ -3,9 +3,9 @@
 
 FROM node:22-slim
 
-# Install system dependencies for Firefox + X11 + Audio support
+# Install system dependencies for X11 + Audio support
+# Note: Playwright will install its own patched Firefox (based on stable, not nightly)
 RUN apt-get update && apt-get install -y \
-    firefox-esr \
     fonts-liberation \
     fonts-noto-color-emoji \
     libgbm1 \
@@ -31,20 +31,14 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Pre-install Widevine CDM for Firefox DRM support (Netflix, etc.)
-RUN mkdir -p /opt/widevine && \
-    curl -L https://dl.google.com/widevine-cdm/4.10.2710.0-linux-x64.zip -o /tmp/widevine.zip && \
-    unzip /tmp/widevine.zip -d /opt/widevine && \
-    rm /tmp/widevine.zip && \
-    chmod -R 755 /opt/widevine
-
-ENV MOZ_GMP_PATH=/opt/widevine
+# Firefox will automatically download Widevine CDM when needed for DRM content
 
 # Install @playwright/mcp (provides `playwright-mcp` binary) and claude-code globally
 RUN npm install -g @playwright/mcp @anthropic-ai/claude-code
 
-# Install Firefox browser using the exact playwright version bundled with @playwright/mcp.
-# This ensures the browser revision aligns with what playwright-mcp expects at runtime.
+# Install Playwright's patched Firefox browser (based on stable Firefox, not nightly)
+# Playwright requires its own patched version and cannot use system-installed Firefox
+# The browser revision is bundled with @playwright/mcp to ensure compatibility
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN PW_CLI=$(find /usr/local/lib/node_modules -name "cli.js" -path "*/playwright/cli.js" 2>/dev/null | head -1) && \
     [ -n "$PW_CLI" ] && node "$PW_CLI" install --with-deps firefox

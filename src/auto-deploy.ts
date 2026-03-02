@@ -410,7 +410,7 @@ export async function executeDeploy(
       }
 
       // Step 6.6: Run host dependency checks
-      await runDependencyChecks(projectRoot, steps, rebuildStart);
+      await runDependencyChecks(projectRoot, steps, Date.now());
 
       // Step 7: Restart service
       const restartStart = Date.now();
