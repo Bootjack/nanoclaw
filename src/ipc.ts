@@ -405,6 +405,23 @@ export async function processTaskIpc(
       }
       break;
 
+    case 'restart_router':
+      // Only main group can request router restart
+      if (!isMain) {
+        logger.warn(
+          { sourceGroup },
+          'Unauthorized restart_router attempt blocked',
+        );
+        break;
+      }
+      logger.info({ sourceGroup }, 'Router restart requested via IPC');
+      // Gracefully exit - systemd/process manager will restart automatically
+      // This allows new config (registered groups, env vars) to take effect
+      setTimeout(() => {
+        process.exit(0);
+      }, 100); // Brief delay to ensure IPC file cleanup completes
+      break;
+
     default:
       logger.warn({ type: data.type }, 'Unknown IPC task type');
   }
