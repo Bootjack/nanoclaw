@@ -2,6 +2,14 @@
  * Stdio MCP Server for NanoClaw
  * Standalone process that agent teams subagents can inherit.
  * Reads context from environment variables, writes IPC files for the host.
+ *
+ * PLATFORM SUPPORT:
+ * This MCP server is platform-agnostic and supports multiple messaging platforms.
+ * Set NANOCLAW_PLATFORM environment variable to: 'slack', 'whatsapp', or 'telegram'
+ * Defaults to 'slack' if not specified.
+ *
+ * The host must implement platform-specific message sending by reading IPC files
+ * from /workspace/ipc/messages/ and routing based on the 'platform' field.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -19,6 +27,10 @@ const TASKS_DIR = path.join(IPC_DIR, 'tasks');
 const chatJid = process.env.NANOCLAW_CHAT_JID!;
 const groupFolder = process.env.NANOCLAW_GROUP_FOLDER!;
 const isMain = process.env.NANOCLAW_IS_MAIN === '1';
+
+// Platform detection (defaults to 'slack' if not specified)
+// Supported platforms: slack, whatsapp, telegram
+const platform = (process.env.NANOCLAW_PLATFORM || 'slack').toLowerCase();
 
 function writeIpcFile(dir: string, data: object): string {
   fs.mkdirSync(dir, { recursive: true });
@@ -41,10 +53,10 @@ const server = new McpServer({
 
 server.tool(
   'send_message',
-  "Send a message to the user or group immediately while you're still running. Use this for progress updates or to send multiple messages. You can call this multiple times. Note: when running as a scheduled task, your final output is NOT sent to the user — use this tool if you need to communicate with the user or group.",
+  "Send a message to the current chat immediately while you're still running. Use this for progress updates or to send multiple messages. You can call this multiple times. Note: when running as a scheduled task, your final output is NOT sent to the user — use this tool if you need to communicate with the user or chat.",
   {
     text: z.string().describe('The message text to send'),
-    sender: z.string().optional().describe('Your role/identity name (e.g. "Researcher"). When set, messages appear from a dedicated bot in Telegram.'),
+    sender: z.string().optional().describe('Your role/identity name (e.g. "Researcher"). When set, messages may appear from a dedicated bot identity (platform-dependent).'),
   },
   async (args) => {
     const data: Record<string, string | undefined> = {
@@ -53,12 +65,36 @@ server.tool(
       text: args.text,
       sender: args.sender || undefined,
       groupFolder,
+      platform,
       timestamp: new Date().toISOString(),
     };
 
     writeIpcFile(MESSAGES_DIR, data);
 
     return { content: [{ type: 'text' as const, text: 'Message sent.' }] };
+  },
+);
+
+server.tool(
+  'send_slack_message',
+  'Send a message to a specific Slack channel. Use this to post messages or follow up in Slack channels where you have access.',
+  {
+    channel_id: z.string().describe('The Slack channel ID (e.g., "C0AHARMCJTU")'),
+    text: z.string().describe('The message text to send'),
+    thread_ts: z.string().optional().describe('Optional thread timestamp to reply in a thread'),
+  },
+  async (args) => {
+    const data = {
+      type: 'slack_message',
+      channelId: args.channel_id,
+      text: args.text,
+      threadTs: args.thread_ts,
+      timestamp: new Date().toISOString(),
+    };
+
+    writeIpcFile(MESSAGES_DIR, data);
+
+    return { content: [{ type: 'text' as const, text: `Slack message sent to channel ${args.channel_id}` }] };
   },
 );
 
@@ -245,37 +281,72 @@ server.tool(
 );
 
 server.tool(
-  'register_group',
-  `Register a new WhatsApp group so the agent can respond to messages there. Main group only.
+  'register_chat',
+  `Register a new chat/channel so the agent can respond to messages there. Main chat only.
 
-Use available_groups.json to find the JID for a group. The folder name should be lowercase with hyphens (e.g., "family-chat").`,
+For Slack: Use channel ID (e.g., "C0AHARMCJTU")
+For WhatsApp: Use JID (e.g., "120363336345536173@g.us")
+For Telegram: Use chat ID (e.g., "-1001234567890")
+
+The folder name should be lowercase with hyphens (e.g., "family-chat").`,
   {
-    jid: z.string().describe('The WhatsApp JID (e.g., "120363336345536173@g.us")'),
-    name: z.string().describe('Display name for the group'),
-    folder: z.string().describe('Folder name for group files (lowercase, hyphens, e.g., "family-chat")'),
-    trigger: z.string().describe('Trigger word (e.g., "@Andy")'),
+    chat_id: z.string().describe('The platform-specific chat identifier (Slack channel ID, WhatsApp JID, or Telegram chat ID)'),
+    name: z.string().describe('Display name for the chat/channel'),
+    folder: z.string().describe('Folder name for chat files (lowercase, hyphens, e.g., "family-chat")'),
+    trigger: z.string().describe('Trigger word to activate the bot (e.g., "@Mitzi")'),
   },
   async (args) => {
     if (!isMain) {
       return {
-        content: [{ type: 'text' as const, text: 'Only the main group can register new groups.' }],
+        content: [{ type: 'text' as const, text: 'Only the main chat can register new chats.' }],
         isError: true,
       };
     }
 
     const data = {
-      type: 'register_group',
-      jid: args.jid,
+      type: 'register_chat',
+      chatId: args.chat_id,
       name: args.name,
       folder: args.folder,
       trigger: args.trigger,
+      platform,
       timestamp: new Date().toISOString(),
     };
 
     writeIpcFile(TASKS_DIR, data);
 
     return {
-      content: [{ type: 'text' as const, text: `Group "${args.name}" registered. It will start receiving messages immediately.` }],
+      content: [{ type: 'text' as const, text: `Chat "${args.name}" registered. It will start receiving messages immediately.` }],
+    };
+  },
+);
+
+server.tool(
+  'update_env',
+  'Update an environment variable in the host .env file. The change will take effect in the next container session. Main chat only.',
+  {
+    key: z.string().describe('Environment variable name (e.g., "GITHUB_TOKEN")'),
+    value: z.string().describe('Environment variable value'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [{ type: 'text' as const, text: 'Only the main chat can update environment variables.' }],
+        isError: true,
+      };
+    }
+
+    const data = {
+      type: 'update_env',
+      key: args.key,
+      value: args.value,
+      timestamp: new Date().toISOString(),
+    };
+
+    writeIpcFile(TASKS_DIR, data);
+
+    return {
+      content: [{ type: 'text' as const, text: `Environment variable ${args.key} update requested. Will be available in next container session.` }],
     };
   },
 );
