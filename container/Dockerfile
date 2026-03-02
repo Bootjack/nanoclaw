@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     git \
     unzip \
+    gh \
     && rm -rf /var/lib/apt/lists/*
 
 # Firefox will automatically download Widevine CDM when needed for DRM content
