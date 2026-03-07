@@ -321,36 +321,6 @@ The folder name should be lowercase with hyphens (e.g., "family-chat").`,
   },
 );
 
-server.tool(
-  'update_env',
-  'Update an environment variable in the host .env file. The change will take effect in the next container session. Main chat only.',
-  {
-    key: z.string().describe('Environment variable name (e.g., "GITHUB_TOKEN")'),
-    value: z.string().describe('Environment variable value'),
-  },
-  async (args) => {
-    if (!isMain) {
-      return {
-        content: [{ type: 'text' as const, text: 'Only the main chat can update environment variables.' }],
-        isError: true,
-      };
-    }
-
-    const data = {
-      type: 'update_env',
-      key: args.key,
-      value: args.value,
-      timestamp: new Date().toISOString(),
-    };
-
-    writeIpcFile(TASKS_DIR, data);
-
-    return {
-      content: [{ type: 'text' as const, text: `Environment variable ${args.key} update requested. Will be available in next container session.` }],
-    };
-  },
-);
-
 // Start the stdio transport
 const transport = new StdioServerTransport();
 await server.connect(transport);
