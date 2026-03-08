@@ -1,0 +1,14 @@
+# Database files (created at runtime)
+index.db
+index.db-shm
+index.db-wal
+
+# Test files
+test-*.js
+
+# Generated content (populated at runtime)
+people/*.md
+projects/*.md
+facts/*.md
+conversations/*.md
+consolidated/*.md
