@@ -171,6 +171,8 @@ export async function processTaskIpc(
     trigger?: string;
     requiresTrigger?: boolean;
     containerConfig?: RegisteredGroup['containerConfig'];
+    // For register_chat (alias for register_group with chatId field)
+    chatId?: string;
     // For update_env
     updates?: Record<string, string>;
   },
@@ -380,6 +382,44 @@ export async function processTaskIpc(
         logger.warn(
           { data },
           'Invalid register_group request - missing required fields',
+        );
+      }
+      break;
+
+    case 'register_chat':
+      // Alias for register_group to match MCP tool naming
+      // Only main group can register new chats
+      if (!isMain) {
+        logger.warn(
+          { sourceGroup },
+          'Unauthorized register_chat attempt blocked',
+        );
+        break;
+      }
+      if (data.chatId && data.name && data.folder && data.trigger) {
+        if (!isValidGroupFolder(data.folder)) {
+          logger.warn(
+            { sourceGroup, folder: data.folder },
+            'Invalid register_chat request - unsafe folder name',
+          );
+          break;
+        }
+        deps.registerGroup(data.chatId, {
+          name: data.name,
+          folder: data.folder,
+          trigger: data.trigger,
+          added_at: new Date().toISOString(),
+          containerConfig: data.containerConfig,
+          requiresTrigger: data.requiresTrigger,
+        });
+        logger.info(
+          { chatId: data.chatId, name: data.name, folder: data.folder },
+          'Chat registered via IPC (register_chat)',
+        );
+      } else {
+        logger.warn(
+          { data },
+          'Invalid register_chat request - missing required fields (chatId, name, folder, trigger)',
         );
       }
       break;
