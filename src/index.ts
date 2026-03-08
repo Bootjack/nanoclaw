@@ -158,7 +158,36 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     if (!hasTrigger) return true;
   }
 
-  const prompt = formatMessages(missedMessages);
+  let prompt = formatMessages(missedMessages);
+
+  // Inject memory context for relevant information
+  try {
+    // Dynamic import of CommonJS module
+    const { default: ConversationMemory } = await import(
+      path.join(PROJECT_ROOT, 'groups', 'main', 'memory', 'conversation-memory.js')
+    );
+    const memory = new ConversationMemory(group.folder);
+    const memoryContext = await memory.getContext(prompt);
+
+    if (memoryContext.context) {
+      prompt = `${prompt}\n\n${memoryContext.context}`;
+      logger.debug(
+        {
+          group: group.name,
+          memoryEntries: memoryContext.entries?.length || 0
+        },
+        'Memory context injected'
+      );
+    }
+
+    memory.close();
+  } catch (error: unknown) {
+    // Memory system is optional - log but don't fail if unavailable
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Failed to load memory context (optional feature)'
+    );
+  }
 
   // Advance cursor so the piping path in startMessageLoop won't re-fetch
   // these messages. Save the old cursor so we can roll back on error.
