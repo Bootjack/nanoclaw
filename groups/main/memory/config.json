@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "database_path": "/workspace/group/memory/index.db",
+  "markdown_root": "/workspace/group/memory",
+  "namespace": "main",
+  "retrieval": {
+    "max_results": 10,
+    "bm25_weight": 0.5,
+    "vector_weight": 0.5,
+    "rrf_k": 60,
+    "enable_vector_search": false
+  },
+  "consolidation": {
+    "enabled": false,
+    "daily_schedule": "0 1 * * *",
+    "weekly_schedule": "0 2 * * 0",
+    "monthly_schedule": "0 3 1 * *",
+    "compression_ratio": 0.3
+  },
+  "categories": {
+    "people": "Information about individuals",
+    "projects": "Project-related knowledge and context",
+    "facts": "General facts, preferences, and important information",
+    "conversations": "Conversation summaries and important exchanges",
+    "consolidated": "Consolidated and summarized entries"
+  }
+}
