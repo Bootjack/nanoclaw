@@ -2,7 +2,7 @@
  * Conversation Memory Integration
  * Provides memory context for agent responses
  */
-const MemorySystem = require('./memory-api-v2');
+const MemorySystem = require('./memory-api');
 
 class ConversationMemory {
   constructor(namespace = 'main') {

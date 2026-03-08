@@ -3,7 +3,7 @@
 ## ✅ Completed Components
 
 1. **Database & Schema** - SQLite with FTS5 full-text search
-2. **Core API** - `memory-api-v2.js` for low-level operations
+2. **Core API** - `memory-api.js` for low-level operations
 3. **Conversation Memory** - `conversation-memory.js` for high-level integration
 4. **CLI Tool** - `memory-cli.js` for manual memory management
 5. **Agent Integration Example** - Shows how to inject memory into prompts
@@ -138,9 +138,9 @@ if (shouldStoreMemory(agentResponse)) {
 /workspace/group/memory/
 ├── index.db                    # SQLite database
 ├── config.json                 # System configuration
-├── schema-v2.sql              # Database schema
+├── schema.sql                 # Database schema
 ├── init-db.js                 # Database initialization
-├── memory-api-v2.js           # Core API
+├── memory-api.js              # Core API
 ├── conversation-memory.js     # High-level integration
 ├── memory-cli.js              # CLI tool
 ├── agent-integration-example.js  # Integration example
@@ -201,7 +201,7 @@ Run the test suite:
 
 ```bash
 # Test core API
-node memory-api-v2.js
+node memory-api.js
 
 # Test conversation integration
 node agent-integration-example.js

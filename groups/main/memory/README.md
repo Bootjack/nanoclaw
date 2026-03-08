@@ -18,8 +18,8 @@ A hybrid memory system combining markdown files (human-readable) with SQLite FTS
 /workspace/group/memory/
 ├── index.db                 # SQLite database
 ├── config.json             # Configuration
-├── schema-v2.sql           # Database schema
-├── memory-api-v2.js        # API implementation
+├── schema.sql              # Database schema
+├── memory-api.js           # API implementation
 ├── people/                 # Person entries
 ├── projects/               # Project knowledge
 ├── facts/                  # General facts and preferences
@@ -45,7 +45,7 @@ A hybrid memory system combining markdown files (human-readable) with SQLite FTS
 ## Usage
 
 ```javascript
-const MemorySystem = require('./memory-api-v2');
+const MemorySystem = require('./memory-api');
 
 const memory = new MemorySystem({
   namespace: 'main'  // Or any group folder name
@@ -104,9 +104,9 @@ memory.close();
 
 ## Files
 
-- `schema-v2.sql`: Database schema
+- `schema.sql`: Database schema
 - `init-db.js`: Database initialization
-- `memory-api-v2.js`: Core API implementation
+- `memory-api.js`: Core API implementation
 - `config.json`: System configuration
 - `README.md`: This file
 
@@ -117,7 +117,7 @@ memory.close();
 node init-db.js
 
 # Test API
-node memory-api-v2.js
+node memory-api.js
 ```
 
 ## Notes

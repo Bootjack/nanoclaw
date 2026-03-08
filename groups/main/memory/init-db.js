@@ -9,7 +9,7 @@ const path = require('path');
 const Database = require('/workspace/project/node_modules/better-sqlite3');
 
 const DB_PATH = path.join(__dirname, 'index.db');
-const SCHEMA_PATH = path.join(__dirname, 'schema-v2.sql');
+const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
 
 console.log('🗄️  Initializing memory system database...');
 
