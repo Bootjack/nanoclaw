@@ -470,11 +470,45 @@ function ensureContainerSystemRunning(): void {
   cleanupOrphans();
 }
 
+/**
+ * Ensure required Slack channels are registered at startup.
+ * This registers channels that should always be monitored,
+ * with their specific trigger requirements.
+ */
+function ensureSlackChannelsRegistered(): void {
+  // C0AHARMCJTU - Mitzi Development channel (no trigger required)
+  const mitziDevJid = 'slack:C0AHARMCJTU';
+  if (!registeredGroups[mitziDevJid]) {
+    registerGroup(mitziDevJid, {
+      name: 'Mitzi Development',
+      folder: 'mitzi-dev',
+      trigger: '@Mitzi',
+      requiresTrigger: false, // Always listen, respond to everything
+      added_at: new Date().toISOString(),
+    });
+    logger.info({ jid: mitziDevJid }, 'Registered Mitzi Development channel');
+  }
+
+  // C0AHPNS2LCR - Random channel (requires "Mitzi" or "@Mitzi" trigger)
+  const randomJid = 'slack:C0AHPNS2LCR';
+  if (!registeredGroups[randomJid]) {
+    registerGroup(randomJid, {
+      name: 'Random',
+      folder: 'random',
+      trigger: '@Mitzi',
+      requiresTrigger: true, // Requires "Mitzi" or "@Mitzi" mention
+      added_at: new Date().toISOString(),
+    });
+    logger.info({ jid: randomJid }, 'Registered Random channel');
+  }
+}
+
 async function main(): Promise<void> {
   ensureContainerSystemRunning();
   initDatabase();
   logger.info('Database initialized');
   loadState();
+  ensureSlackChannelsRegistered();
 
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
