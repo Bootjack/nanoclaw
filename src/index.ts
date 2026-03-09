@@ -160,6 +160,35 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
 
   let prompt = formatMessages(missedMessages);
 
+  // Inject channel-specific meta prompt if available
+  const metaPromptPath = path.join(
+    DATA_DIR,
+    '..',
+    'groups',
+    group.folder,
+    'meta-prompt.md'
+  );
+  if (fs.existsSync(metaPromptPath)) {
+    try {
+      const metaPrompt = fs.readFileSync(metaPromptPath, 'utf-8').trim();
+      if (metaPrompt) {
+        prompt = `${metaPrompt}\n\n---\n\n${prompt}`;
+        logger.debug(
+          { group: group.name, metaPromptLength: metaPrompt.length },
+          'Channel meta-prompt injected'
+        );
+      }
+    } catch (error: unknown) {
+      logger.warn(
+        {
+          group: group.name,
+          error: error instanceof Error ? error.message : String(error)
+        },
+        'Failed to load meta-prompt (optional feature)'
+      );
+    }
+  }
+
   // Inject memory context for relevant information
   try {
     // Dynamic import of CommonJS module
