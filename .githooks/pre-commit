@@ -1,0 +1,21 @@
+#!/bin/bash
+# Pre-commit hook to run formatting checks, typecheck, and tests before allowing commit
+# This prevents broken builds from being committed and pushed
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# Check formatting
+echo "📝 Checking code formatting..."
+npm run format:check
+
+# Type check
+echo "🔍 Running TypeScript type check..."
+npm run typecheck
+
+# Run tests
+echo "🧪 Running tests..."
+npm test
+
+echo "✅ All checks passed! Proceeding with commit."
