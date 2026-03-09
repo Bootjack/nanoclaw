@@ -164,7 +164,13 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   try {
     // Dynamic import of CommonJS module
     const { default: ConversationMemory } = await import(
-      path.join(PROJECT_ROOT, 'groups', 'main', 'memory', 'conversation-memory.js')
+      path.join(
+        PROJECT_ROOT,
+        'groups',
+        'main',
+        'memory',
+        'conversation-memory.js',
+      )
     );
     const memory = new ConversationMemory(group.folder);
     const memoryContext = await memory.getContext(prompt);
@@ -174,9 +180,9 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
       logger.debug(
         {
           group: group.name,
-          memoryEntries: memoryContext.entries?.length || 0
+          memoryEntries: memoryContext.entries?.length || 0,
         },
-        'Memory context injected'
+        'Memory context injected',
       );
     }
 
@@ -185,7 +191,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     // Memory system is optional - log but don't fail if unavailable
     logger.warn(
       { error: error instanceof Error ? error.message : String(error) },
-      'Failed to load memory context (optional feature)'
+      'Failed to load memory context (optional feature)',
     );
   }
 
