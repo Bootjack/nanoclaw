@@ -28,6 +28,7 @@ export interface IpcDeps {
     availableGroups: AvailableGroup[],
     registeredJids: Set<string>,
   ) => void;
+  shutdown: (signal: string) => Promise<void>;
 }
 
 let ipcWatcherRunning = false;
@@ -455,10 +456,11 @@ export async function processTaskIpc(
         break;
       }
       logger.info({ sourceGroup }, 'Router restart requested via IPC');
-      // Gracefully exit - systemd/process manager will restart automatically
-      // This allows new config (registered groups, env vars) to take effect
-      setTimeout(() => {
-        process.exit(0);
+      // Gracefully shutdown channels before exit
+      // This ensures WebSocket connections are properly closed
+      // to prevent connection leaks
+      setTimeout(async () => {
+        await deps.shutdown('IPC_RESTART');
       }, 100); // Brief delay to ensure IPC file cleanup completes
       break;
 
