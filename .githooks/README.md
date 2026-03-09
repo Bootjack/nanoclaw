@@ -12,6 +12,8 @@ git config core.hooksPath .githooks
 
 This tells Git to use the hooks in this directory instead of `.git/hooks/`.
 
+> **Note:** This replaces the previous Husky-based hook setup. Husky has been removed to simplify the codebase and eliminate deprecation warnings.
+
 ## Available Hooks
 
 ### pre-commit
