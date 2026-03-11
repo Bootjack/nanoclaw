@@ -101,6 +101,10 @@ export class SlackChannel implements Channel {
 
         // Create a unique folder name for this DM using the Slack channel ID
         // Format: dm-D0AHEHL1CG4 (removes 'slack:' prefix)
+        // This ensures:
+        // 1. Separate conversation history per user
+        // 2. Isolated memory namespace per user (prevents cross-DM info leakage)
+        // 3. Independent group folders for each DM
         const folderName = jid.replace('slack:', 'dm-');
 
         this.opts.registerGroup(jid, {
