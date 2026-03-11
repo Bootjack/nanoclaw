@@ -91,16 +91,26 @@ export class SlackChannel implements Channel {
       this.opts.onChatMetadata(jid, timestamp, undefined, 'slack', isGroup);
 
       // Only deliver full messages for registered groups.
-      // DMs (channel_type === 'im') are auto-registered against the main group
-      // on first contact so users can DM the bot without manual setup.
+      // DMs (channel_type === 'im') are auto-registered on first contact
+      // with their own unique folder so each DM has separate context.
       const groups = this.opts.registeredGroups();
       if (!groups[jid]) {
         if (msg.channel_type !== 'im' || !this.opts.registerGroup) return;
         const mainGroup = Object.values(groups).find((g) => !g.requiresTrigger);
         if (!mainGroup) return;
+
+        // Create a unique folder name for this DM using the Slack channel ID
+        // Format: dm-D0AHEHL1CG4 (removes 'slack:' prefix)
+        // This ensures:
+        // 1. Separate conversation history per user
+        // 2. Isolated memory namespace per user (prevents cross-DM info leakage)
+        // 3. Independent group folders for each DM
+        const folderName = jid.replace('slack:', 'dm-');
+
         this.opts.registerGroup(jid, {
           ...mainGroup,
           name: msg.user || 'dm',
+          folder: folderName,
           requiresTrigger: false,
         });
       }
