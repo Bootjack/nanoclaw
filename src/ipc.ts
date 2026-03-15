@@ -371,6 +371,15 @@ export async function processTaskIpc(
           );
           break;
         }
+        // CRITICAL SECURITY: Prevent reassigning the main group
+        const existingGroup = registeredGroups[data.jid];
+        if (existingGroup && existingGroup.folder === MAIN_GROUP_FOLDER) {
+          logger.warn(
+            { jid: data.jid, attemptedFolder: data.folder },
+            'Blocked attempt to reassign main group - main group cannot be changed',
+          );
+          break;
+        }
         deps.registerGroup(data.jid, {
           name: data.name,
           folder: data.folder,
@@ -402,6 +411,15 @@ export async function processTaskIpc(
           logger.warn(
             { sourceGroup, folder: data.folder },
             'Invalid register_chat request - unsafe folder name',
+          );
+          break;
+        }
+        // CRITICAL SECURITY: Prevent reassigning the main group
+        const existingChat = registeredGroups[data.chatId];
+        if (existingChat && existingChat.folder === MAIN_GROUP_FOLDER) {
+          logger.warn(
+            { chatId: data.chatId, attemptedFolder: data.folder },
+            'Blocked attempt to reassign main group - main group cannot be changed',
           );
           break;
         }

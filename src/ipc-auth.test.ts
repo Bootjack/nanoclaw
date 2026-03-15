@@ -671,4 +671,72 @@ describe('register_group success', () => {
 
     expect(getRegisteredGroup('partial@g.us')).toBeUndefined();
   });
+
+  it('SECURITY: main group cannot reassign main group to different folder', async () => {
+    // Attempt to reassign main@g.us to a different folder
+    await processTaskIpc(
+      {
+        type: 'register_group',
+        jid: 'main@g.us',
+        name: 'Main Reassigned',
+        folder: 'evil-folder',
+        trigger: '@Evil',
+      },
+      'main',
+      true,
+      deps,
+    );
+
+    // Verify main group was NOT reassigned
+    const mainGroup = getRegisteredGroup('main@g.us');
+    expect(mainGroup).toBeDefined();
+    expect(mainGroup!.folder).toBe('main'); // Still 'main', not 'evil-folder'
+    expect(mainGroup!.name).toBe('Main'); // Original name preserved
+    expect(mainGroup!.trigger).toBe('always'); // Original trigger preserved
+  });
+
+  it('SECURITY: register_chat cannot reassign main group', async () => {
+    // Attempt to reassign main@g.us using register_chat alias
+    await processTaskIpc(
+      {
+        type: 'register_chat',
+        chatId: 'main@g.us',
+        name: 'Main Reassigned via Chat',
+        folder: 'another-evil-folder',
+        trigger: '@Evil2',
+      },
+      'main',
+      true,
+      deps,
+    );
+
+    // Verify main group was NOT reassigned
+    const mainGroup = getRegisteredGroup('main@g.us');
+    expect(mainGroup).toBeDefined();
+    expect(mainGroup!.folder).toBe('main'); // Still 'main'
+    expect(mainGroup!.name).toBe('Main'); // Original preserved
+  });
+
+  it('register_group allows updating non-main groups', async () => {
+    // This should work - updating a non-main group is allowed
+    await processTaskIpc(
+      {
+        type: 'register_group',
+        jid: 'other@g.us',
+        name: 'Other Updated',
+        folder: 'other-group-updated',
+        trigger: '@UpdatedTrigger',
+      },
+      'main',
+      true,
+      deps,
+    );
+
+    // Verify the non-main group was updated
+    const otherGroup = getRegisteredGroup('other@g.us');
+    expect(otherGroup).toBeDefined();
+    expect(otherGroup!.folder).toBe('other-group-updated');
+    expect(otherGroup!.name).toBe('Other Updated');
+    expect(otherGroup!.trigger).toBe('@UpdatedTrigger');
+  });
 });
