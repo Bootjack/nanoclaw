@@ -371,7 +371,15 @@ export async function processTaskIpc(
           );
           break;
         }
-        // CRITICAL SECURITY: Prevent reassigning the main group
+        // CRITICAL SECURITY: Prevent any group from using the "main" folder
+        if (data.folder === MAIN_GROUP_FOLDER) {
+          logger.warn(
+            { jid: data.jid, folder: data.folder },
+            'Blocked attempt to register with main folder - main folder is reserved',
+          );
+          break;
+        }
+        // CRITICAL SECURITY: Prevent reassigning an existing main group
         const existingGroup = registeredGroups[data.jid];
         if (existingGroup && existingGroup.folder === MAIN_GROUP_FOLDER) {
           logger.warn(
@@ -414,7 +422,15 @@ export async function processTaskIpc(
           );
           break;
         }
-        // CRITICAL SECURITY: Prevent reassigning the main group
+        // CRITICAL SECURITY: Prevent any chat from using the "main" folder
+        if (data.folder === MAIN_GROUP_FOLDER) {
+          logger.warn(
+            { chatId: data.chatId, folder: data.folder },
+            'Blocked attempt to register with main folder - main folder is reserved',
+          );
+          break;
+        }
+        // CRITICAL SECURITY: Prevent reassigning an existing main group
         const existingChat = registeredGroups[data.chatId];
         if (existingChat && existingChat.folder === MAIN_GROUP_FOLDER) {
           logger.warn(

@@ -672,6 +672,25 @@ describe('register_group success', () => {
     expect(getRegisteredGroup('partial@g.us')).toBeUndefined();
   });
 
+  it('SECURITY: blocks any group from registering with folder="main"', async () => {
+    // Attempt to register a new JID with folder="main" (privilege escalation)
+    await processTaskIpc(
+      {
+        type: 'register_group',
+        jid: 'evil@g.us',
+        name: 'Evil Group',
+        folder: 'main', // Trying to claim the privileged "main" folder
+        trigger: '@Evil',
+      },
+      'main',
+      true,
+      deps,
+    );
+
+    // Verify the evil group was NOT registered
+    expect(getRegisteredGroup('evil@g.us')).toBeUndefined();
+  });
+
   it('SECURITY: main group cannot reassign main group to different folder', async () => {
     // Attempt to reassign main@g.us to a different folder
     await processTaskIpc(
@@ -693,6 +712,25 @@ describe('register_group success', () => {
     expect(mainGroup!.folder).toBe('main'); // Still 'main', not 'evil-folder'
     expect(mainGroup!.name).toBe('Main'); // Original name preserved
     expect(mainGroup!.trigger).toBe('always'); // Original trigger preserved
+  });
+
+  it('SECURITY: register_chat blocks any chat from using folder="main"', async () => {
+    // Attempt to register a new chat with folder="main" (privilege escalation)
+    await processTaskIpc(
+      {
+        type: 'register_chat',
+        chatId: 'evil-chat@g.us',
+        name: 'Evil Chat',
+        folder: 'main', // Trying to claim the privileged "main" folder
+        trigger: '@Evil',
+      },
+      'main',
+      true,
+      deps,
+    );
+
+    // Verify the evil chat was NOT registered
+    expect(getRegisteredGroup('evil-chat@g.us')).toBeUndefined();
   });
 
   it('SECURITY: register_chat cannot reassign main group', async () => {
