@@ -671,4 +671,110 @@ describe('register_group success', () => {
 
     expect(getRegisteredGroup('partial@g.us')).toBeUndefined();
   });
+
+  it('SECURITY: blocks any group from registering with folder="main"', async () => {
+    // Attempt to register a new JID with folder="main" (privilege escalation)
+    await processTaskIpc(
+      {
+        type: 'register_group',
+        jid: 'evil@g.us',
+        name: 'Evil Group',
+        folder: 'main', // Trying to claim the privileged "main" folder
+        trigger: '@Evil',
+      },
+      'main',
+      true,
+      deps,
+    );
+
+    // Verify the evil group was NOT registered
+    expect(getRegisteredGroup('evil@g.us')).toBeUndefined();
+  });
+
+  it('SECURITY: main group cannot reassign main group to different folder', async () => {
+    // Attempt to reassign main@g.us to a different folder
+    await processTaskIpc(
+      {
+        type: 'register_group',
+        jid: 'main@g.us',
+        name: 'Main Reassigned',
+        folder: 'evil-folder',
+        trigger: '@Evil',
+      },
+      'main',
+      true,
+      deps,
+    );
+
+    // Verify main group was NOT reassigned
+    const mainGroup = getRegisteredGroup('main@g.us');
+    expect(mainGroup).toBeDefined();
+    expect(mainGroup!.folder).toBe('main'); // Still 'main', not 'evil-folder'
+    expect(mainGroup!.name).toBe('Main'); // Original name preserved
+    expect(mainGroup!.trigger).toBe('always'); // Original trigger preserved
+  });
+
+  it('SECURITY: register_chat blocks any chat from using folder="main"', async () => {
+    // Attempt to register a new chat with folder="main" (privilege escalation)
+    await processTaskIpc(
+      {
+        type: 'register_chat',
+        chatId: 'evil-chat@g.us',
+        name: 'Evil Chat',
+        folder: 'main', // Trying to claim the privileged "main" folder
+        trigger: '@Evil',
+      },
+      'main',
+      true,
+      deps,
+    );
+
+    // Verify the evil chat was NOT registered
+    expect(getRegisteredGroup('evil-chat@g.us')).toBeUndefined();
+  });
+
+  it('SECURITY: register_chat cannot reassign main group', async () => {
+    // Attempt to reassign main@g.us using register_chat alias
+    await processTaskIpc(
+      {
+        type: 'register_chat',
+        chatId: 'main@g.us',
+        name: 'Main Reassigned via Chat',
+        folder: 'another-evil-folder',
+        trigger: '@Evil2',
+      },
+      'main',
+      true,
+      deps,
+    );
+
+    // Verify main group was NOT reassigned
+    const mainGroup = getRegisteredGroup('main@g.us');
+    expect(mainGroup).toBeDefined();
+    expect(mainGroup!.folder).toBe('main'); // Still 'main'
+    expect(mainGroup!.name).toBe('Main'); // Original preserved
+  });
+
+  it('register_group allows updating non-main groups', async () => {
+    // This should work - updating a non-main group is allowed
+    await processTaskIpc(
+      {
+        type: 'register_group',
+        jid: 'other@g.us',
+        name: 'Other Updated',
+        folder: 'other-group-updated',
+        trigger: '@UpdatedTrigger',
+      },
+      'main',
+      true,
+      deps,
+    );
+
+    // Verify the non-main group was updated
+    const otherGroup = getRegisteredGroup('other@g.us');
+    expect(otherGroup).toBeDefined();
+    expect(otherGroup!.folder).toBe('other-group-updated');
+    expect(otherGroup!.name).toBe('Other Updated');
+    expect(otherGroup!.trigger).toBe('@UpdatedTrigger');
+  });
 });
