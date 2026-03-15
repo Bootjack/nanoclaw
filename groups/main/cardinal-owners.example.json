@@ -1,0 +1,9 @@
+{
+  "owner_emails": {
+    "owner1@example.com": "Owner1",
+    "owner2@example.com": "Owner2",
+    "owner3@example.com": "Owner3"
+  },
+  "calendar_id": "YOUR_CALENDAR_ID@group.calendar.google.com",
+  "slack_channel_jid": "slack:YOUR_CHANNEL_ID"
+}

@@ -9,7 +9,7 @@ store/
 data/
 logs/
 
-# Groups - only track base structure and specific CLAUDE.md files
+# Groups - only track base structure and specific files
 groups/*
 !groups/main/
 !groups/global/
@@ -17,6 +17,9 @@ groups/main/*
 groups/global/*
 !groups/main/CLAUDE.md
 !groups/global/CLAUDE.md
+!groups/main/cardinal-owners.example.json
+!groups/main/cardinal-validator-full.js
+groups/main/cardinal-owners.json
 
 # Secrets
 *.keys.json
